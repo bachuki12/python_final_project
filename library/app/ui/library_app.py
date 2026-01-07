@@ -1,6 +1,8 @@
 import sys
 
 from app.services.library import Library
+from app.models.admin import Admin
+
 
 class Colors:
     HEADER = '\033[95m'   # იასამნისფერი
@@ -103,26 +105,53 @@ class LibraryApp:
     # ---------------- MENU ----------------
         # 1. მთავარი მენიუ
     def main_menu(self):
-            while True:
-                clear_screen()  # ეკრანის გასუფთავება ყოველ ციკლზე
-                print(f"\n{Colors.BOLD}🚀 მთავარი მენიუ:{Colors.ENDC}")
-                print(f"{Colors.BLUE} 1. 👤 პირადი გვერდი")
-                print(f" 2. 📖 წიგნის გატანა")
-                print(f" 3. 🔄 წიგნის დაბრუნება")
+        while True:
+            clear_screen()
+
+            # -------- ADMIN --------
+            if isinstance(self.current_user, Admin):
+                print(f"\n{Colors.BOLD}🛠️ ADMIN მენიუ:{Colors.ENDC}")
+                print(f"{Colors.BLUE} 1. ➕ წიგნის დამატება")
+                print(f" 2. 🗑️ წიგნის წაშლა")
+                print(f" 3. 📚 ყველა წიგნის ნახვა")
                 print(f"{Colors.FAIL} 4. 🚪 გასვლა{Colors.ENDC}")
 
                 choice = input(f"\n{Colors.BOLD}👉 აირჩიეთ მოქმედება: {Colors.ENDC}").strip()
 
                 if choice == "1":
-                    self.personal_page()  # გადავდივართ პირად გვერდზე
+                    self.admin_add_book()
                 elif choice == "2":
-                    self.borrow_book()
+                    self.admin_remove_book()
                 elif choice == "3":
-                    self.return_book()
+                    self.admin_list_books()
                 elif choice == "4":
                     sys.exit()
                 else:
-                    input("❌ არასწორი არჩევანი. გაგრძელებისთვის დააჭირეთ Enter-ს...")
+                    input("❌ არასწორი არჩევანი. Enter...")
+
+            # -------- USER --------
+            else:
+                print(f"\n{Colors.BOLD}🚀 მთავარი მენიუ:{Colors.ENDC}")
+                print(f"{Colors.BLUE} 1. 👤 პირადი გვერდი")
+                print(f" 2. 📚 ყველა წიგნის ნახვა")
+                print(f" 3. 📖 წიგნის გატანა")
+                print(f" 4. 🔄 წიგნის დაბრუნება")
+                print(f"{Colors.FAIL} 5. 🚪 გასვლა{Colors.ENDC}")
+
+                choice = input(f"\n{Colors.BOLD}👉 აირჩიეთ მოქმედება: {Colors.ENDC}").strip()
+
+                if choice == "1":
+                    self.personal_page()
+                elif choice == "2":
+                    self.admin_list_books()
+                elif choice == "3":
+                    self.borrow_book()
+                elif choice == "4":
+                    self.return_book()
+                elif choice == "5":
+                    sys.exit()
+                else:
+                    input("❌ არასწორი არჩევანი. Enter...")
 
         # 2. პირადი გვერდის "ეკრანი"
     def personal_page(self):
@@ -265,11 +294,69 @@ class LibraryApp:
                 print(f"\n{Colors.BOLD}🎉 სულ დაბრუნდა {returned_count} წიგნი.{Colors.ENDC}")
 
                 # სურვილისამებრ შეფასება (მხოლოდ ერთხელ)
-                rating = input(f"\n{Colors.BOLD}⭐ გსურთ შეაფასოთ წიგნები? (1-5) ან გამოტოვეთ: {Colors.ENDC}")
-                if rating:
-                    print(f"{Colors.GREEN}🙏 მადლობა შეფასებისთვის!{Colors.ENDC}")
+                rating_input = input(f"\n{Colors.BOLD}⭐ შეაფასეთ წიგნი (0–5) ან გამოტოვეთ: {Colors.ENDC}").strip()
+
+                if rating_input:
+                    try:
+                        rating_value = float(rating_input)
+
+                        if 0 <= rating_value <= 5:
+                            new_avg = self.library.rate_book(returned["title"], rating_value)
+                            if new_avg is not None:
+                                print(f"{Colors.GREEN}📊 ახალი საშუალო რეიტინგი: {new_avg}{Colors.ENDC}")
+                        else:
+                            print(f"{Colors.FAIL}❌ რეიტინგი უნდა იყოს 0-დან 5-მდე{Colors.ENDC}")
+
+                    except ValueError:
+                        print(f"{Colors.FAIL}❌ გთხოვთ შეიყვანოთ რიცხვი (მაგ: 4.5){Colors.ENDC}")
 
         except ValueError:
             print(f"{Colors.FAIL}❌ გთხოვთ გამოიყენოთ მხოლოდ ციფრები და მძიმე{Colors.ENDC}")
 
         input("\nგასაგრძელებლად დააჭირეთ Enter-ს...")
+
+    def admin_add_book(self):
+        clear_screen()
+        print(f"{Colors.BOLD}➕ წიგნის დამატება{Colors.ENDC}")
+
+        title = input("📖 სახელი: ").strip()
+        author = input("✍️ ავტორი: ").strip()
+        pages = input("📄 გვერდები: ").strip()
+        rating = input("⭐ რეიტინგი: ").strip()
+
+        try:
+            self.current_user.add_book(
+                self.library,
+                title,
+                author,
+                int(pages),
+                float(rating)
+            )
+            print(f"\n{Colors.GREEN}✅ წიგნი წარმატებით დაემატა!{Colors.ENDC}")
+        except ValueError:
+            print(f"{Colors.FAIL}❌ არასწორი მონაცემები{Colors.ENDC}")
+
+        input("\nEnter...")
+
+    def admin_remove_book(self):
+        clear_screen()
+        print(f"{Colors.BOLD}🗑️ წიგნის წაშლა{Colors.ENDC}")
+
+        title = input("წიგნის ზუსტი სახელი: ").strip()
+        self.current_user.remove_book(self.library, title)
+
+        print(f"{Colors.GREEN}✅ თუ არსებობდა, წიგნი წაშლილია{Colors.ENDC}")
+        input("\nEnter...")
+
+    def admin_list_books(self):
+        clear_screen()
+        print(f"{Colors.BOLD}📚 ბიბლიოთეკის წიგნები{Colors.ENDC}\n")
+
+        if not self.library.books:
+            print(f"{Colors.WARNING}ბიბლიოთეკა ცარიელია{Colors.ENDC}")
+        else:
+            for i, b in enumerate(self.library.books):
+                print(f"{i + 1}. {b.title} | {b.author} | {b.pages} გვ | ⭐ {b.rating}")
+
+        input("\nEnter...")
+

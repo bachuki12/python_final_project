@@ -2,27 +2,53 @@ import json
 import os
 from app.models.book import Book 
 from app.models.user import User
+from app.models.admin import Admin
+
+
+
 
 class Library:
-    USERS_FILE = "users.json"
-    BOOKS_FILE = "books.json"
+    # ---------------- PATH SETUP ----------------
+    BASE_DIR = os.path.dirname(
+        os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__))
+        )
+    )
+    DATA_DIR = os.path.join(BASE_DIR, "data")
+
+    USERS_FILE = os.path.join(DATA_DIR, "users.json")
+    BOOKS_FILE = os.path.join(DATA_DIR, "books.json")
 
     def __init__(self):
+        os.makedirs(self.DATA_DIR, exist_ok=True)
+
         self.users = {}
         self.books = []
 
         self.load_users()
         self.load_books()
+        self._ensure_admin_exists()
+
 
     def load_users(self):
         if not os.path.exists(self.USERS_FILE):
+            self.users = {}
             return
 
-        with open(self.USERS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(self.USERS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError:
+            self.users = {}
+            return
 
         for pid, user_data in data.items():
-            self.users[pid] = User.from_dict(pid, user_data)
+            if user_data.get("type") == "admin":
+                self.users[pid] = Admin.from_dict(pid, user_data)
+            else:
+                self.users[pid] = User.from_dict(pid, user_data)
+            if not os.path.exists(self.USERS_FILE):
+                return
 
     def save_users(self):
         data = {pid: user.to_dict() for pid, user in self.users.items()}
@@ -72,3 +98,23 @@ class Library:
             if book.author.lower() == author.lower()
         ]
 
+    def _ensure_admin_exists(self):
+        ADMIN_PID = "0001"
+
+        if ADMIN_PID not in self.users:
+            admin = Admin(
+                pid="0001",
+                name="Administrator",
+                phone="000",
+                password="admin"
+            )
+            self.users[admin.pid] = admin
+            self.save_users()
+
+    def rate_book(self, title, rating):
+        for book in self.books:
+            if book.title.lower() == title.lower():
+                book.add_rating(rating)
+                self.save_books()
+                return book.rating
+        return None

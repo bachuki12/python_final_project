@@ -1,0 +1,16 @@
+{
+    "0001": {
+        "type": "admin",
+        "name": "Administrator",
+        "phone": "000",
+        "password": "admin",
+        "borrowed_books": []
+    },
+    "111": {
+        "type": "user",
+        "name": "ლუბა ბალახაშვილი",
+        "phone": "1234",
+        "password": "ქქქ",
+        "borrowed_books": []
+    }
+}
