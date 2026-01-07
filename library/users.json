@@ -21,5 +21,17 @@
         "phone": "234",
         "password": "ქწე",
         "borrowed_books": []
+    },
+    "111": {
+        "name": "ბაჩუკი",
+        "phone": "000",
+        "password": "123",
+        "borrowed_books": []
+    },
+    "დას": {
+        "name": "ას",
+        "phone": "ას",
+        "password": "212",
+        "borrowed_books": []
     }
 }
