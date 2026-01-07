@@ -14,7 +14,6 @@ class Library:
         self.load_users()
         self.load_books()
 
-    # ---------- USERS ----------
     def load_users(self):
         if not os.path.exists(self.USERS_FILE):
             return
