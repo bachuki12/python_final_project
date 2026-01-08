@@ -64,7 +64,11 @@ class Library:
         with open(self.BOOKS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        self.books = [Book.from_dict(b) for b in data]
+        self.books = sorted(
+            (Book.from_dict(b) for b in data),
+            key=lambda book: book.rating,
+            reverse=True
+        )
 
     def save_books(self):
         with open(self.BOOKS_FILE, "w", encoding="utf-8") as f:
