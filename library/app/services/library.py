@@ -99,14 +99,14 @@ class Library:
         ]
 
     def _ensure_admin_exists(self):
-        ADMIN_PID = "0001"
+        ADMIN_PID = "11111111111"
 
         if ADMIN_PID not in self.users:
             admin = Admin(
-                pid="0001",
+                pid="11111111111",
                 name="Administrator",
-                phone="000",
-                password="admin"
+                phone="000111222",
+                password="admin123"
             )
             self.users[admin.pid] = admin
             self.save_users()

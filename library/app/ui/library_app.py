@@ -134,19 +134,7 @@ class LibraryApp:
             try:
                 for i in range(attempts):
                     pid = input(f"{Colors.BOLD}🆔 პირადი ნომერი: {Colors.ENDC}").strip()
-                    if not pid.isdigit():
-                        raise ValueError('გთხოვთ შეიყვანოთ ვალიდური პირადი ნომერი')
-                    if len(pid) != 11:
-                        raise ValueError('გთხოვთ შეიყვანოთ ვალიდური პირადი ნომერი')
-                
                     password = input(f"{Colors.BOLD}🔑 პაროლი: {Colors.ENDC}").strip()
-                    if len(password) < 3:
-                        raise ValueError('პაროლი უნდა იყოს მინიმუმ 3 სიმბოლო')               
-                    if not all(char in allowed_chars for char in password):
-                        raise ValueError('პაროლი უნდა შეიცავდეს მხოლოდ ციფრებს და ინგლისურ ასოებს')
-                    if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password)):
-                        raise ValueError('პაროლი უნდა შეიცავდეს მინიმუმ ერთ ინგლისურ ასოს და ერთ ციფრს')
-                    
                     user = self.library.login_user(pid, password)
 
                     if user:
@@ -155,9 +143,9 @@ class LibraryApp:
                     else:
                         remaining = attempts - (i + 1)
                         if remaining > 0:
-                            print(f"{Colors.FAIL}❌ არასწორი მონაცემები. დაგრჩათ {remaining} მცდელობა.{Colors.ENDC}\n")
+                            raise ValueError(f"{Colors.FAIL}❌ არასწორი მონაცემები. დაგრჩათ {remaining} მცდელობა.{Colors.ENDC}\n")
                         else:
-                            print(f"{Colors.FAIL}❌ მცდელობები ამოიწურა!{Colors.ENDC}")
+                            raise ValueError(f"{Colors.FAIL}❌ მცდელობები ამოიწურა!{Colors.ENDC}")
 
                 return None  # თუ აქამდე მოვიდა, ე.ი. 3-ჯერ შეცდა და ბრუნდება საწყის კითხვაზე
             
