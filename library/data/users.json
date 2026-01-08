@@ -1,9 +1,9 @@
 {
-    "0001": {
+    "11111111111": {
         "type": "admin",
         "name": "Administrator",
-        "phone": "000",
-        "password": "admin",
+        "phone": "000111222",
+        "password": "admin123",
         "borrowed_books": []
     },
     "111": {
@@ -11,6 +11,20 @@
         "name": "ლუბა ბალახაშვილი",
         "phone": "1234",
         "password": "ქქქ",
+        "borrowed_books": []
+    },
+    "12345678910": {
+        "type": "user",
+        "name": "ლიზა კენჭოშვილი",
+        "phone": "555444333",
+        "password": "1asd",
+        "borrowed_books": []
+    },
+    "0001": {
+        "type": "admin",
+        "name": "Administrator",
+        "phone": "000",
+        "password": "admin",
         "borrowed_books": []
     }
 }

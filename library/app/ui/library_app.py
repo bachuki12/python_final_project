@@ -1,5 +1,6 @@
 import sys
-
+import time
+import string
 from app.services.library import Library
 from app.models.admin import Admin
 
@@ -47,36 +48,78 @@ class LibraryApp:
             # ინპუტის ხაზი (ესეც შეგვიძლია ცოტა შევწიოთ)
             choice = input(f"\n{Colors.BOLD}   👉 გთხოვთ აირჩიოთ (1/2/3): {Colors.ENDC}").strip()
 
-            if choice == "1" or choice.lower() == "კი":
-                self.current_user = self.login()
-            elif choice == "2" or choice.lower() == "არა":
-                self.current_user = self.register()
-            elif choice == "3" or choice.lower() == "გასვლა":
-                print(f"\n{('👋 ნახვამდის!').center(width)}")
-                break
-            else:
-                print(f"\n{Colors.FAIL}{'❌ არასწორი არჩევანი!'.center(width)}{Colors.ENDC}")
-                import time
+            try:
+
+                if choice == "1" or choice.lower() == "კი":
+                    self.current_user = self.login()
+                elif choice == "2" or choice.lower() == "არა":
+                    self.current_user = self.register()
+                elif choice == "3" or choice.lower() == "გასვლა":
+                    print(f"\n{('👋 ნახვამდის!').center(width)}")
+                    break
+                else:
+                    raise ValueError(f"\n{Colors.FAIL}{'❌ არასწორი არჩევანი!'.center(width)}{Colors.ENDC}")
+                    
+                if self.current_user:
+                    self.main_menu()  
+                    
+            except ValueError as e:
+                print(e)
                 time.sleep(1.2)
-                continue
-
-            if self.current_user:
-                self.main_menu()    # ---------------- AUTH ----------------
+                continue  
+                
+            # ---------------- AUTH ----------------
+    
+    
+    
     def register(self):
-        print("\n--- რეგისტრაცია ---")
-        pid = input("პირადი ნომერი: ").strip()
-        name = input("სახელი და გვარი: ").strip()
-        phone = input("ტელეფონი: ").strip()
-        password = input("პაროლი: ").strip()
+        while True:
+            clear_screen()
+            print("\n--- რეგისტრაცია ---")
+        
+            try:
+            
+                pid = input("პირადი ნომერი: ").strip()
+                
+                if not pid.isdigit():
+                    raise ValueError('გთხოვთ შეიყვანოთ ვალიდური პირადი ნომერი')
+                if len(pid) != 11:
+                    raise ValueError('გთხოვთ შეიყვანოთ ვალიდური პირადი ნომერი')
+                
+                name = input("სახელი და გვარი: ").strip()
 
-        user = self.library.register_user(pid, name, phone, password)
-        if not user:
-            print("❌ ამ პირადი ნომრით მომხმარებელი უკვე არსებობს")
-            print("სცადეთ ავტორიზაცია ")
-            return None
+                if any(char.isdigit() for char in name):
+                    raise ValueError('სახელი არ უნდა შეიცავდეს ციფრებს, სცადეთ თავიდან')
+                
+                phone = input("ტელეფონი: ").strip()
+                
+                if not phone.isdigit() or len(phone) != 9:
+                    raise ValueError('გთხოვთ შეყვანოთ ვალიდური 9-ციფრიანი ნომერი')
+                
+                password = input("პაროლი: ").strip()
+                allowed_chars = string.ascii_letters + string.digits  
+                
+                if len(password) < 3:
+                    raise ValueError('პაროლი უნდა იყოს მინიმუმ 3 სიმბოლო')
+                
+                if not all(char in allowed_chars for char in password):
+                    raise ValueError('პაროლი უნდა შეიცავდეს მხოლოდ ციფრებს და ინგლისურ ასოებს')
+                if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password)):
+                    raise ValueError('პაროლი უნდა შეიცავდეს მინიმუმ ერთ ინგლისურ ასოს და ერთ ციფრს')
+                user = self.library.register_user(pid, name, phone, password)
+                
+                if not user:
+                    #raise ExistingUserException('მომხმარებელი უკვე არსებობს')
+                    print("❌ ამ პირადი ნომრით მომხმარებელი უკვე არსებობს")
+                    print("სცადეთ ავტორიზაცია ")
+                    return None
 
-        print("✅ რეგისტრაცია წარმატებით დასრულდა")
-        return user
+                print("✅ რეგისტრაცია წარმატებით დასრულდა")
+                return user 
+            except ValueError as e:
+                print(e)
+                time.sleep(1.1)
+                continue 
 
     def login(self):
         print(f"\n{Colors.BLUE}╔" + "═" * 30 + "╗")
@@ -84,24 +127,44 @@ class LibraryApp:
         print(f"╚" + "═" * 30 + "╝{Colors.ENDC}")
 
         attempts = 3  # მცდელობების რაოდენობა
+        allowed_chars = string.ascii_letters + string.digits  
 
-        for i in range(attempts):
-            pid = input(f"{Colors.BOLD}🆔 პირადი ნომერი: {Colors.ENDC}").strip()
-            password = input(f"{Colors.BOLD}🔑 პაროლი: {Colors.ENDC}").strip()
+        while True:
+            clear_screen()
+            try:
+                for i in range(attempts):
+                    pid = input(f"{Colors.BOLD}🆔 პირადი ნომერი: {Colors.ENDC}").strip()
+                    if not pid.isdigit():
+                        raise ValueError('გთხოვთ შეიყვანოთ ვალიდური პირადი ნომერი')
+                    if len(pid) != 11:
+                        raise ValueError('გთხოვთ შეიყვანოთ ვალიდური პირადი ნომერი')
+                
+                    password = input(f"{Colors.BOLD}🔑 პაროლი: {Colors.ENDC}").strip()
+                    if len(password) < 3:
+                        raise ValueError('პაროლი უნდა იყოს მინიმუმ 3 სიმბოლო')               
+                    if not all(char in allowed_chars for char in password):
+                        raise ValueError('პაროლი უნდა შეიცავდეს მხოლოდ ციფრებს და ინგლისურ ასოებს')
+                    if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password)):
+                        raise ValueError('პაროლი უნდა შეიცავდეს მინიმუმ ერთ ინგლისურ ასოს და ერთ ციფრს')
+                    
+                    user = self.library.login_user(pid, password)
 
-            user = self.library.login_user(pid, password)
+                    if user:
+                        print(f"\n{Colors.GREEN}✅ მოგესალმებით, {user.name}!{Colors.ENDC}")
+                        return user
+                    else:
+                        remaining = attempts - (i + 1)
+                        if remaining > 0:
+                            print(f"{Colors.FAIL}❌ არასწორი მონაცემები. დაგრჩათ {remaining} მცდელობა.{Colors.ENDC}\n")
+                        else:
+                            print(f"{Colors.FAIL}❌ მცდელობები ამოიწურა!{Colors.ENDC}")
 
-            if user:
-                print(f"\n{Colors.GREEN}✅ მოგესალმებით, {user.name}!{Colors.ENDC}")
-                return user
-            else:
-                remaining = attempts - (i + 1)
-                if remaining > 0:
-                    print(f"{Colors.FAIL}❌ არასწორი მონაცემები. დაგრჩათ {remaining} მცდელობა.{Colors.ENDC}\n")
-                else:
-                    print(f"{Colors.FAIL}❌ მცდელობები ამოიწურა!{Colors.ENDC}")
-
-        return None  # თუ აქამდე მოვიდა, ე.ი. 3-ჯერ შეცდა და ბრუნდება საწყის კითხვაზე
+                return None  # თუ აქამდე მოვიდა, ე.ი. 3-ჯერ შეცდა და ბრუნდება საწყის კითხვაზე
+            
+            except ValueError as e:
+                print(e)
+                time.sleep(1.1)
+                continue
     # ---------------- MENU ----------------
         # 1. მთავარი მენიუ
     def main_menu(self):
@@ -339,24 +402,33 @@ class LibraryApp:
         input("\nEnter...")
 
     def admin_remove_book(self):
+        
         clear_screen()
         print(f"{Colors.BOLD}🗑️ წიგნის წაშლა{Colors.ENDC}")
-
         title = input("წიგნის ზუსტი სახელი: ").strip()
-        self.current_user.remove_book(self.library, title)
-
-        print(f"{Colors.GREEN}✅ თუ არსებობდა, წიგნი წაშლილია{Colors.ENDC}")
-        input("\nEnter...")
+            
+        try:                          
+            self.current_user.remove_book(self.library, title)               
+            print(f"{Colors.GREEN}✅ თუ არსებობდა, წიგნი წაშლილია{Colors.ENDC}")
+            input("\nEnter...")
+                
+            
+        except ValueError as e:
+            print(e)
+            input("\nEnter...")
 
     def admin_list_books(self):
-        clear_screen()
-        print(f"{Colors.BOLD}📚 ბიბლიოთეკის წიგნები{Colors.ENDC}\n")
+        while True:
+            clear_screen()
+            print(f"{Colors.BOLD}📚 ბიბლიოთეკის წიგნები{Colors.ENDC}\n")
 
-        if not self.library.books:
-            print(f"{Colors.WARNING}ბიბლიოთეკა ცარიელია{Colors.ENDC}")
-        else:
-            for i, b in enumerate(self.library.books):
-                print(f"{i + 1}. {b.title} | {b.author} | {b.pages} გვ | ⭐ {b.rating}")
+            if not self.library.books:
+                print(f"{Colors.WARNING}ბიბლიოთეკა ცარიელია{Colors.ENDC}")
+            else:
+                for i, book in enumerate(self.library.books, start=1):
+                    print(f"{i}. {book.title} | {book.author} | {book.pages} გვ | ⭐ {book.rating}")
 
-        input("\nEnter...")
+            input("\nEnter...")
+            break  
+
 

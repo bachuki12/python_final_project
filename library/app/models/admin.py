@@ -12,6 +12,9 @@ class Admin(User):
         library.save_books()
 
     def remove_book(self, library, title):
+        book_exists = any(b.title.lower() == title.lower() for b in library.books)
+        if not book_exists:
+            raise ValueError(f"წიგნი '{title}' ვერ მოიძებნა")
         library.books = [
             b for b in library.books
             if b.title.lower() != title.lower()
