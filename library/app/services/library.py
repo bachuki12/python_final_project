@@ -4,9 +4,6 @@ from app.models.book import Book
 from app.models.user import User
 from app.models.admin import Admin
 
-
-
-
 class Library:
     # ---------------- PATH SETUP ----------------
     BASE_DIR = os.path.dirname(
@@ -64,7 +61,11 @@ class Library:
         with open(self.BOOKS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        self.books = [Book.from_dict(b) for b in data]
+        self.books = sorted(
+            (Book.from_dict(b) for b in data),
+            key=lambda book: book.rating,
+            reverse=True
+        )
 
     def save_books(self):
         with open(self.BOOKS_FILE, "w", encoding="utf-8") as f:
@@ -118,3 +119,18 @@ class Library:
                 self.save_books()
                 return book.rating
         return None
+    
+    def remove_user(self, pid):
+        user_todelete = self.users.get(pid)
+        
+        if not user_todelete:
+            return False, 'მომხმარებელი ვერ მოიძებნა'
+
+        if user_todelete.borrowed_books:
+            return False, 'გთხოვთ დააბრუნოთ წიგნები ანგარიშის გაუქმებამდე'
+        
+        del self.users[pid]
+        self.save_users()
+        return True, 'თქვენი ანგარიში წარმატებით გაუქმდა'
+            
+        

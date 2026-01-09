@@ -187,7 +187,8 @@ class LibraryApp:
                 print(f" 2. 📚 ყველა წიგნის ნახვა")
                 print(f" 3. 📖 წიგნის გატანა")
                 print(f" 4. 🔄 წიგნის დაბრუნება")
-                print(f"{Colors.FAIL} 5. 🚪 გასვლა{Colors.ENDC}")
+                print(f'5. ანგარიშის გაუქმება')
+                print(f"{Colors.FAIL} 6. 🚪 გასვლა{Colors.ENDC}")
 
                 choice = input(f"\n{Colors.BOLD}👉 აირჩიეთ მოქმედება: {Colors.ENDC}").strip()
 
@@ -200,6 +201,8 @@ class LibraryApp:
                 elif choice == "4":
                     self.return_book()
                 elif choice == "5":
+                    self.delete_account()
+                elif choice == "6":
                     sys.exit()
                 else:
                     input("❌ არასწორი არჩევანი. Enter...")
@@ -270,7 +273,7 @@ class LibraryApp:
         else:
             print(f"{Colors.FAIL}❌ არასწორი არჩევანი{Colors.ENDC}")
             return
-
+        
         # წიგნის შერჩევა
         book = None
         if len(books) == 1:
@@ -419,4 +422,24 @@ class LibraryApp:
             input("\nEnter...")
             break  
 
+    def delete_account(self):
+        clear_screen()
+        print("⚠️ ანგარიშის გაუქმება")
+        confirm = input("დარწმუნებული ხართ? (კი/არა): ").strip().lower()
 
+        if confirm != "კი":
+            input("გაუქმდა. Enter...")
+            return
+
+        password = input("პაროლის დადასტურება: ").strip()
+
+        if password != self.current_user.password:
+            input("❌ არასწორი პაროლი. Enter...")
+            return
+
+        success, message = self.library.remove_user(self.current_user.pid)
+        input(message + " Enter...")
+
+        if success:
+            self.current_user = None
+            self.run()   
