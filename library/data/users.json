@@ -33,5 +33,19 @@
         "phone": "222222222",
         "password": "123nk",
         "borrowed_books": []
+    },
+    "12341234123": {
+        "type": "user",
+        "name": "",
+        "phone": 0,
+        "password": "",
+        "borrowed_books": []
+    },
+    "12345123456": {
+        "type": "user",
+        "name": "",
+        "phone": 0,
+        "password": "",
+        "borrowed_books": []
     }
 }

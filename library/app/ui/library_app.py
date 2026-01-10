@@ -1,173 +1,166 @@
+# app/ui/library_app.py
+import os
 import sys
 import time
-import string
+
 from app.services.library import Library
 from app.models.admin import Admin
 
+from app.utils.validators import InputValidator as V, ValidationError
+from app.utils.safe import SafeExecutor as Safe
+
 
 class Colors:
-    HEADER = '\033[95m'   # იასამნისფერი
-    BLUE = '\033[94m'     # ლურჯი
-    GREEN = '\033[92m'    # მწვანე
-    WARNING = '\033[93m'  # ყვითელი
-    FAIL = '\033[91m'     # წითელი
-    ENDC = '\033[0m'      # ფერის დასრულება
-    BOLD = '\033[1m'      # მუქი
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
 
-import os
-import sys
 
 def clear_screen():
-    # Windows-ისთვის 'cls', სხვებისთვის 'clear'
     os.system('cls' if os.name == 'nt' else 'clear')
 
-# აქედან გრძელდება თქვენი კლასი...
 
 class LibraryApp:
     def __init__(self):
         self.library = Library()
         self.current_user = None
 
-    # ---------------- ENTRY POINT ----------------
+    # ==================================================
+    # Small helpers (no repetitive try/except in features)
+    # ==================================================
+    def _pause(self, msg="\nგასაგრძელებლად დააჭირეთ Enter-ს..."):
+        input(msg)
+
+    def _ask(self, prompt, validator=None):
+        """
+        validator: function(text)-> validated value
+        If validator is None, returns stripped text (non-empty not enforced).
+        Keeps asking until valid.
+        """
+        while True:
+            value = input(prompt).strip()
+            try:
+                if validator is None:
+                    return value
+                return validator(value)
+            except ValidationError as e:
+                print(f"{Colors.FAIL}❌ {e}{Colors.ENDC}")
+                time.sleep(1.0)
+
+    def _ask_choice(self, prompt, allowed):
+        return self._ask(prompt, lambda x: V.choice(x, allowed, "არასწორი არჩევანი"))
+
+    def _is_admin(self):
+        return isinstance(self.current_user, Admin)
+
+    # ==================================================
+    # ENTRY POINT
+    # ==================================================
     def run(self):
-        width = 60  # ტერმინალის პირობითი სიგანე ცენტრირებისთვის
+        width = 60
 
         while True:
             clear_screen()
             print()
-            # მისალმება და მენიუ ცენტრში
             print(f"{Colors.BOLD}{'👋 მოგესალმებით ბიბლიოთეკის სისტემაში'.center(width)}{Colors.ENDC}")
             print(f"{Colors.BLUE}{('═' * 45).center(width)}{Colors.ENDC}")
-
             print(f"{Colors.GREEN}{'1. ✅ კი, რეგისტრირებული ვარ'.center(width)}{Colors.ENDC}")
             print(f"{'2. 📝 არა, მსურს რეგისტრაცია'.center(width)}")
             print(f"{Colors.FAIL}{'3. 🚪 გასვლა (Exit)'.center(width)}{Colors.ENDC}")
-
             print(f"{Colors.BLUE}{('═' * 45).center(width)}{Colors.ENDC}")
 
-            # ინპუტის ხაზი (ესეც შეგვიძლია ცოტა შევწიოთ)
-            choice = input(f"\n{Colors.BOLD}   👉 გთხოვთ აირჩიოთ (1/2/3): {Colors.ENDC}").strip()
+            choice = self._ask_choice(
+                f"\n{Colors.BOLD}   👉 გთხოვთ აირჩიოთ (1/2/3): {Colors.ENDC}",
+                ["1", "2", "3"]
+            )
 
-            try:
+            if choice == "3":
+                print(f"\n{('👋 ნახვამდის!').center(width)}")
+                return
 
-                if choice == "1" or choice.lower() == "კი":
-                    self.current_user = self.login()
-                elif choice == "2" or choice.lower() == "არა":
-                    self.current_user = self.register()
-                elif choice == "3" or choice.lower() == "გასვლა":
-                    print(f"\n{('👋 ნახვამდის!').center(width)}")
-                    break
-                else:
-                    raise ValueError(f"\n{Colors.FAIL}{'❌ არასწორი არჩევანი!'.center(width)}{Colors.ENDC}")
-                    
-                if self.current_user:
-                    self.main_menu()  
-                    
-            except ValueError as e:
-                print(e)
-                time.sleep(1.2)
-                continue  
-                
-            # ---------------- AUTH ----------------
-    
-    
-    
+            if choice == "1":
+                self.current_user = self.login()
+            else:
+                self.current_user = self.register()
+
+            if self.current_user:
+                self.main_menu()
+                # user/admin მენიუდან დაბრუნების შემდეგ ისევ მთავარ ეკრანზე
+                self.current_user = None
+
+    # ==================================================
+    # AUTH
+    # ==================================================
     def register(self):
-        while True:
-            clear_screen()
-            print("\n--- რეგისტრაცია ---")
-        
-            try:
-            
-                pid = input("პირადი ნომერი: ").strip()
-                
-                if not pid.isdigit():
-                    raise ValueError('გთხოვთ შეიყვანოთ ვალიდური პირადი ნომერი')
-                if len(pid) != 11:
-                    raise ValueError('გთხოვთ შეიყვანოთ ვალიდური პირადი ნომერი')
-                
-                name = input("სახელი და გვარი: ").strip()
+        clear_screen()
+        print("\n--- რეგისტრაცია ---")
 
-                if any(char.isdigit() for char in name):
-                    raise ValueError('სახელი არ უნდა შეიცავდეს ციფრებს, სცადეთ თავიდან')
-                
-                phone = input("ტელეფონი: ").strip()
-                
-                if not phone.isdigit() or len(phone) != 9:
-                    raise ValueError('გთხოვთ შეყვანოთ ვალიდური 9-ციფრიანი ნომერი')
-                
-                password = input("პაროლი: ").strip()
-                allowed_chars = string.ascii_letters + string.digits  
-                
-                if len(password) < 3:
-                    raise ValueError('პაროლი უნდა იყოს მინიმუმ 3 სიმბოლო')
-                
-                if not all(char in allowed_chars for char in password):
-                    raise ValueError('პაროლი უნდა შეიცავდეს მხოლოდ ციფრებს და ინგლისურ ასოებს')
-                if not (any(c.isalpha() for c in password) and any(c.isdigit() for c in password)):
-                    raise ValueError('პაროლი უნდა შეიცავდეს მინიმუმ ერთ ინგლისურ ასოს და ერთ ციფრს')
-                user = self.library.register_user(pid, name, phone, password)
-                
-                if not user:
-                    #raise ExistingUserException('მომხმარებელი უკვე არსებობს')
-                    print("❌ ამ პირადი ნომრით მომხმარებელი უკვე არსებობს")
-                    print("სცადეთ ავტორიზაცია ")
-                    return None
+        def action():
+            pid = self._ask("პირადი ნომერი: ", lambda x: V.digits_exact(x, 11, "გთხოვთ შეიყვანოთ ვალიდური 11-ციფრიანი პირადი ნომერი"))
+            name = self._ask("სახელი და გვარი: ", lambda x: V.name(x, "სახელი არ უნდა შეიცავდეს ციფრებს"))
+            phone = self._ask("ტელეფონი (9 ციფრი): ", lambda x: V.digits_exact(x, 9, "გთხოვთ შეიყვანოთ ვალიდური 9-ციფრიანი ნომერი"))
+            password = self._ask("პაროლი: ", lambda x: V.password(x, min_len=3))
 
-                print("✅ რეგისტრაცია წარმატებით დასრულდა")
-                return user 
-            except ValueError as e:
-                print(e)
-                time.sleep(1.1)
-                continue 
+            user = self.library.register_user(pid, name, phone, password)
+            if not user:
+                raise ValidationError("ამ პირადი ნომრით მომხმარებელი უკვე არსებობს")
+
+            print(f"{Colors.GREEN}✅ რეგისტრაცია წარმატებით დასრულდა{Colors.ENDC}")
+            time.sleep(1.0)
+            return user
+
+        user = Safe.run(action)
+        if user is None:
+            # თუ რეგისტრაცია ვერ გამოვიდა, დავბრუნდეთ მთავარ მენიუში
+            self._pause()
+        return user
 
     def login(self):
-        print(f"\n{Colors.BLUE}╔" + "═" * 30 + "╗")
-        print(f"║      {Colors.BOLD}🔐 ავტორიზაცია{Colors.ENDC}         {Colors.BLUE}║")
-        print(f"╚" + "═" * 30 + "╝{Colors.ENDC}")
+        attempts = 3
 
-        attempts = 3  # მცდელობების რაოდენობა
-        allowed_chars = string.ascii_letters + string.digits  
-
-        while True:
+        while attempts > 0:
             clear_screen()
-            try:
-                for i in range(attempts):
-                    pid = input(f"{Colors.BOLD}🆔 პირადი ნომერი: {Colors.ENDC}").strip()
-                    password = input(f"{Colors.BOLD}🔑 პაროლი: {Colors.ENDC}").strip()
-                    user = self.library.login_user(pid, password)
+            print(f"\n{Colors.BLUE}╔" + "═" * 30 + "╗")
+            print(f"║      {Colors.BOLD}🔐 ავტორიზაცია{Colors.ENDC}         {Colors.BLUE}║")
+            print(f"╚" + "═" * 30 + "╝{Colors.ENDC}\n")
 
-                    if user:
-                        print(f"\n{Colors.GREEN}✅ მოგესალმებით, {user.name}!{Colors.ENDC}")
-                        return user
-                    else:
-                        remaining = attempts - (i + 1)
-                        if remaining > 0:
-                            raise ValueError(f"{Colors.FAIL}❌ არასწორი მონაცემები. დაგრჩათ {remaining} მცდელობა.{Colors.ENDC}\n")
-                        else:
-                            raise ValueError(f"{Colors.FAIL}❌ მცდელობები ამოიწურა!{Colors.ENDC}")
+            pid = self._ask(f"{Colors.BOLD}🆔 პირადი ნომერი: {Colors.ENDC}", lambda x: V.non_empty(x, "პირადი ნომერი ცარიელია"))
+            password = self._ask(f"{Colors.BOLD}🔑 პაროლი: {Colors.ENDC}", lambda x: V.non_empty(x, "პაროლი ცარიელია"))
 
-                return None  # თუ აქამდე მოვიდა, ე.ი. 3-ჯერ შეცდა და ბრუნდება საწყის კითხვაზე
-            
-            except ValueError as e:
-                print(e)
-                time.sleep(1.1)
-                continue
-    # ---------------- MENU ----------------
-        # 1. მთავარი მენიუ
+            user = self.library.login_user(pid, password)
+            if user:
+                print(f"\n{Colors.GREEN}✅ მოგესალმებით, {user.name}!{Colors.ENDC}")
+                time.sleep(1.0)
+                return user
+
+            attempts -= 1
+            if attempts > 0:
+                print(f"{Colors.FAIL}❌ არასწორი მონაცემები. დაგრჩათ {attempts} მცდელობა.{Colors.ENDC}")
+                time.sleep(1.2)
+            else:
+                print(f"{Colors.FAIL}❌ მცდელობები ამოიწურა!{Colors.ENDC}")
+                time.sleep(1.2)
+                return None
+
+    # ==================================================
+    # MENU
+    # ==================================================
     def main_menu(self):
         while True:
             clear_screen()
 
-            # -------- ADMIN --------
-            if isinstance(self.current_user, Admin):
+            if self._is_admin():
                 print(f"\n{Colors.BOLD}🛠️ ADMIN მენიუ:{Colors.ENDC}")
                 print(f"{Colors.BLUE} 1. ➕ წიგნის დამატება")
                 print(f" 2. 🗑️ წიგნის წაშლა")
                 print(f" 3. 📚 ყველა წიგნის ნახვა")
                 print(f"{Colors.FAIL} 4. 🚪 გასვლა{Colors.ENDC}")
 
-                choice = input(f"\n{Colors.BOLD}👉 აირჩიეთ მოქმედება: {Colors.ENDC}").strip()
+                choice = self._ask_choice(f"\n{Colors.BOLD}👉 აირჩიეთ მოქმედება: {Colors.ENDC}", ["1", "2", "3", "4"])
 
                 if choice == "1":
                     self.admin_add_book()
@@ -175,12 +168,9 @@ class LibraryApp:
                     self.admin_remove_book()
                 elif choice == "3":
                     self.admin_list_books()
-                elif choice == "4":
-                    sys.exit()
                 else:
-                    input("❌ არასწორი არჩევანი. Enter...")
+                    return
 
-            # -------- USER --------
             else:
                 print(f"\n{Colors.BOLD}🚀 მთავარი მენიუ:{Colors.ENDC}")
                 print(f"{Colors.BLUE} 1. 👤 პირადი გვერდი")
@@ -189,7 +179,7 @@ class LibraryApp:
                 print(f" 4. 🔄 წიგნის დაბრუნება")
                 print(f"{Colors.FAIL} 5. 🚪 გასვლა{Colors.ENDC}")
 
-                choice = input(f"\n{Colors.BOLD}👉 აირჩიეთ მოქმედება: {Colors.ENDC}").strip()
+                choice = self._ask_choice(f"\n{Colors.BOLD}👉 აირჩიეთ მოქმედება: {Colors.ENDC}", ["1", "2", "3", "4", "5"])
 
                 if choice == "1":
                     self.personal_page()
@@ -199,224 +189,204 @@ class LibraryApp:
                     self.borrow_book()
                 elif choice == "4":
                     self.return_book()
-                elif choice == "5":
-                    sys.exit()
                 else:
-                    input("❌ არასწორი არჩევანი. Enter...")
+                    return
 
-        # 2. პირადი გვერდის "ეკრანი"
+    # ==================================================
+    # PERSONAL PAGE
+    # ==================================================
     def personal_page(self):
-            clear_screen()
-            print(f"\n{Colors.BLUE}╔" + "═" * 45 + "╗")
-            print(f"║          {Colors.BOLD}👤 თქვენი პირადი გვერდი{Colors.ENDC}            {Colors.BLUE}║")
-            print(f"╚" + "═" * 45 + "╝")
+        clear_screen()
+        print(f"\n{Colors.BLUE}╔" + "═" * 45 + "╗")
+        print(f"║          {Colors.BOLD}👤 თქვენი პირადი გვერდი{Colors.ENDC}            {Colors.BLUE}║")
+        print(f"╚" + "═" * 45 + "╝{Colors.ENDC}")
 
-            # აქ ვიძახებთ მხოლოდ მონაცემების ბეჭდვას (რეკურსიის გარეშე!)
-            self.display_user_data()
+        self.display_user_data()
+        self._pause(f"\n{Colors.BOLD}🔙 Enter - დაბრუნება მთავარ მენიუში{Colors.ENDC}")
 
-            print(f"\n{Colors.BOLD}🔙 დააჭირეთ 'Enter'-ს მთავარ მენიუში დასაბრუნებლად...{Colors.ENDC}")
-            input()
-            # ფუნქცია მთავრდება და ავტომატურად ბრუნდება main_menu-ში
-
-        # 3. მხოლოდ მონაცემების ბეჭდვა (ჩარჩო)
     def display_user_data(self):
         user = self.current_user
 
-        # მომხმარებლის ძირითადი ინფორმაცია
         print(f"{Colors.BLUE}╔" + "═" * 50 + "╗")
         print(f"║ {Colors.BOLD}👤 მომხმარებელი:{Colors.ENDC} {user.name:<32} {Colors.BLUE}║")
         print(f"║ {Colors.BOLD}📞 ტელეფონი:{Colors.ENDC} {user.phone:<36} {Colors.BLUE}║")
         print(f"╠" + "═" * 50 + "╣")
-
-        # გატანილი წიგნების სექცია
         print(f"║ {Colors.BOLD}📚 გატანილი წიგნები და ვადები:{Colors.ENDC}                {Colors.BLUE}║")
 
         if not user.borrowed_books:
             print(f"║ {Colors.WARNING}   - ამჟამად გატანილი წიგნები არ გაქვთ. {Colors.ENDC}       {Colors.BLUE}║")
         else:
             for i, b in enumerate(user.borrowed_books):
-                # ტექსტის ფორმატირება: წიგნის სახელი და დაბრუნების ვადა
                 title_part = f"{i + 1}. {b['title']}"
                 date_part = f"📅 ვადა: {b['due_date']}"
-
-                # ვსაზღვრავთ თავისუფალ ადგილს, რომ ჩარჩო არ დაიშალოს
-                # 46 არის შიდა სივრცის სიგრძე (50 - გვერდითა სიმბოლოები)
                 line = f"  {title_part:<25} | {date_part:<15}"
                 print(f"║ {Colors.GREEN}{line:<48}{Colors.BLUE} ║")
 
         print(f"╚" + "═" * 50 + "╝{Colors.ENDC}")
-    # ---------------- BORROW ----------------
-    # ---------------- BORROW ----------------
-    # ---------------- BORROW (შესწორებული) ----------------
+
+    # ==================================================
+    # BORROW
+    # ==================================================
     def borrow_book(self):
         clear_screen()
         print(f"\n{Colors.BLUE}🔎 --- წიგნის ძებნა ---{Colors.ENDC}")
-        search_type = input("მოძებნა: 1. სახელით | 2. ავტორით: ").strip()
+
+        search_type = self._ask_choice("მოძებნა: 1. სახელით | 2. ავტორით: ", ["1", "2"])
 
         if search_type == "1":
-            title = input("შეიყვანეთ წიგნის სახელი: ").strip()
+            title = self._ask("შეიყვანეთ წიგნის სახელი: ", lambda x: V.non_empty(x, "სახელი ცარიელია"))
             books = self.library.find_books_by_title(title)
-            if not books:
-                print(f"{Colors.FAIL}❌ ასეთი წიგნი ვერ მოიძებნა{Colors.ENDC}")
-                input("\nდააჭირეთ Enter-ს მენიუში დასაბრუნებლად...")
-                return
-        elif search_type == "2":
-            author = input("შეიყვანეთ ავტორი: ").strip()
-            books = self.library.find_books_by_author(author)
-            if not books:
-                print(f"{Colors.FAIL}❌ ასეთი ავტორის წიგნი არ მოიძებნა{Colors.ENDC}")
-                input("\nდააჭირეთ Enter-ს მენიუში დასაბრუნებლად...")
-                return
         else:
-            print(f"{Colors.FAIL}❌ არასწორი არჩევანი{Colors.ENDC}")
+            author = self._ask("შეიყვანეთ ავტორი: ", lambda x: V.non_empty(x, "ავტორი ცარიელია"))
+            books = self.library.find_books_by_author(author)
+
+        if not books:
+            print(f"{Colors.FAIL}❌ ასეთი წიგნი/ავტორი ვერ მოიძებნა{Colors.ENDC}")
+            self._pause()
             return
 
-        # წიგნის შერჩევა
-        book = None
+        # არჩევა
         if len(books) == 1:
             book = books[0]
             print(f"\n{Colors.GREEN}✅ ნაპოვნია: {book.title} | {book.author}{Colors.ENDC}")
         else:
             print(f"\n{Colors.BOLD}📚 ნაპოვნია რამდენიმე წიგნი:{Colors.ENDC}")
-            for i, b in enumerate(books):
-                print(f"{i + 1}. {b.title} | {b.author} | ⭐ {b.rating}")
+            for i, b in enumerate(books, start=1):
+                print(f"{i}. {b.title} | {b.author} | ⭐ {b.rating}")
 
-            try:
-                index = int(input(f"\n{Colors.BOLD}👉 რომელი წიგნის გატანა გსურთ? (ნომერი): {Colors.ENDC}")) - 1
-                book = books[index]
-            except (ValueError, IndexError):
-                print(f"{Colors.FAIL}❌ არასწორი ნომერი{Colors.ENDC}")
-                input("\nდააჭირეთ Enter-ს მენიუში დასაბრუნებლად...")
-                return
+            idx = self._ask(
+                f"\n{Colors.BOLD}👉 რომელი წიგნის გატანა გსურთ? (ნომერი): {Colors.ENDC}",
+                lambda x: V.int_in_range(x, 1, len(books), "არასწორი ნომერი")
+            )
+            book = books[idx - 1]
 
-        # გატანის გაფორმება - ხდება მხოლოდ ერთხელ აქ!
-        if book:
-            days = input(f"{Colors.BOLD}📅 რამდენი ხნით გსურთ გატანა? (მაგ: 10): {Colors.ENDC}").strip()
-            # ვამატებთ სიტყვა "დღე"-ს ავტომატურად, თუ მომხმარებელმა მხოლოდ ციფრი დაწერა
-            due_date = f"{days} დღე" if days.isdigit() else days
+        # გატანა
+        days = self._ask(
+            f"{Colors.BOLD}📅 რამდენი ხნით გსურთ გატანა? (მაგ: 10): {Colors.ENDC}",
+            lambda x: V.non_empty(x, "ვადა ცარიელია")
+        )
+        due_date = f"{days} დღე" if days.isdigit() else days
 
-            self.current_user.borrow_book(book.title, due_date)
-            self.library.save_users()
+        self.current_user.borrow_book(book.title, due_date)
+        self.library.save_users()
 
-            print(f"\n{Colors.GREEN}✅ წიგნი „{book.title}“ წარმატებით გატანილია!{Colors.ENDC}")
-            input("\nგასაგრძელებლად დააჭირეთ Enter-ს...")
+        print(f"\n{Colors.GREEN}✅ წიგნი „{book.title}“ წარმატებით გატანილია!{Colors.ENDC}")
+        self._pause()
 
-    # ---------------- RETURN (დაბრუნება) ----------------
+    # ==================================================
+    # RETURN + RATING
+    # ==================================================
     def return_book(self):
         user = self.current_user
 
         if not user.borrowed_books:
             print(f"{Colors.FAIL}❌ დასაბრუნებელი წიგნები არ გაქვთ{Colors.ENDC}")
-            input("\nდააჭირეთ Enter-ს მენიუში დასაბრუნებლად...")
+            self._pause()
             return
 
+        clear_screen()
         print(f"\n{Colors.BOLD}📚 თქვენი გატანილი წიგნები:{Colors.ENDC}")
-        for i, b in enumerate(user.borrowed_books):
-            print(f"{i + 1}. {b['title']} (ვადა: {b['due_date']})")
+        for i, b in enumerate(user.borrowed_books, start=1):
+            print(f"{i}. {b['title']} (ვადა: {b['due_date']})")
 
-        try:
-            choice = input(
-                f"\n{Colors.BOLD}👉 შეიყვანეთ დასაბრუნებელი წიგნების ნომრები (მძიმით გამოყოფილი, მაგ: 1, 2) ან 'q' გასასვლელად: {Colors.ENDC}").strip()
+        choice = self._ask(
+            f"\n{Colors.BOLD}👉 შეიყვანეთ დასაბრუნებელი წიგნების ნომრები (მძიმით, მაგ: 1,2) ან 'q' გასასვლელად: {Colors.ENDC}",
+            lambda x: V.non_empty(x, "შეყვანა ცარიელია")
+        )
 
-            if choice.lower() == 'q':
-                return
+        if choice.lower() == "q":
+            return
 
-            # შეყვანილი ტექსტის დაყოფა მძიმით და ინდექსებად გადაქცევა
-            indices = [int(x.strip()) - 1 for x in choice.split(",") if x.strip().isdigit()]
+        def parse_indices(text):
+            # validators-ში არ ვამატებთ ზედმეტ სპეციფიკურ ფუნქციას, მაგრამ ვალიდაციაზე ვიყენებთ ValidationError-ს.
+            parts = [p.strip() for p in text.split(",") if p.strip()]
+            if not parts:
+                raise ValidationError("არასწორი ფორმატი")
 
-            # ინდექსების დალაგება კლებადობით, რომ ამოშლისას სია არ აირიოს
-            indices.sort(reverse=True)
+            idxs = []
+            for p in parts:
+                if not p.isdigit():
+                    raise ValidationError("გამოიყენეთ მხოლოდ ციფრები და მძიმე")
+                idxs.append(int(p) - 1)
 
-            if not indices:
-                print(f"{Colors.FAIL}❌ არასწორი ფორმატი{Colors.ENDC}")
-                return
+            if any(i < 0 or i >= len(user.borrowed_books) for i in idxs):
+                raise ValidationError("ერთ-ერთი ნომერი არასწორია")
 
-            returned_count = 0
-            for index in indices:
-                if 0 <= index < len(user.borrowed_books):
-                    returned = user.return_book(index)
-                    print(f"{Colors.GREEN}✅ წიგნი „{returned['title']}“ მონიშნულია დაბრუნებულად.{Colors.ENDC}")
-                    returned_count += 1
-                else:
-                    print(f"{Colors.FAIL}⚠️ წიგნი ნომრით {index + 1} ვერ მოიძებნა.{Colors.ENDC}")
+            # კლებადობით რომ ამოშლისას სია არ აირიოს
+            idxs.sort(reverse=True)
+            return idxs
 
-            if returned_count > 0:
-                self.library.save_users()
-                print(f"\n{Colors.BOLD}🎉 სულ დაბრუნდა {returned_count} წიგნი.{Colors.ENDC}")
+        idxs = Safe.run(lambda: parse_indices(choice))
+        if idxs is None:
+            self._pause()
+            return
 
-                # სურვილისამებრ შეფასება (მხოლოდ ერთხელ)
-                rating_input = input(f"\n{Colors.BOLD}⭐ შეაფასეთ წიგნი (0–5) ან გამოტოვეთ: {Colors.ENDC}").strip()
+        returned_titles = []
+        for index in idxs:
+            returned = user.return_book(index)
+            returned_titles.append(returned["title"])
+            print(f"{Colors.GREEN}✅ დაბრუნდა: „{returned['title']}“{Colors.ENDC}")
 
-                if rating_input:
-                    try:
-                        rating_value = float(rating_input)
+        self.library.save_users()
+        print(f"\n{Colors.BOLD}🎉 სულ დაბრუნდა {len(returned_titles)} წიგნი.{Colors.ENDC}")
 
-                        if 0 <= rating_value <= 5:
-                            new_avg = self.library.rate_book(returned["title"], rating_value)
-                            if new_avg is not None:
-                                print(f"{Colors.GREEN}📊 ახალი საშუალო რეიტინგი: {new_avg}{Colors.ENDC}")
-                        else:
-                            print(f"{Colors.FAIL}❌ რეიტინგი უნდა იყოს 0-დან 5-მდე{Colors.ENDC}")
+        # შეფასება (მხოლოდ ბოლოს, ერთჯერ)
+        rating_input = input(f"\n{Colors.BOLD}⭐ შეაფასეთ (0–5, შესაძლებელია ათწილადი) ან გამოტოვეთ: {Colors.ENDC}").strip()
+        if rating_input:
+            rating_value = Safe.run(lambda: V.float_in_range(rating_input, 0, 5, "რეიტინგი უნდა იყოს 0-დან 5-მდე"))
+            if rating_value is not None:
+                # შენს CLI-ში "returned" ბოლო წიგნი იყო; აქ ლოგიკურად ვაფასებთ ბოლოს დაბრუნებულს.
+                title_to_rate = returned_titles[-1]
+                new_avg = self.library.rate_book(title_to_rate, rating_value)
+                if new_avg is not None:
+                    print(f"{Colors.GREEN}📊 „{title_to_rate}“ ახალი საშუალო რეიტინგი: {new_avg}{Colors.ENDC}")
 
-                    except ValueError:
-                        print(f"{Colors.FAIL}❌ გთხოვთ შეიყვანოთ რიცხვი (მაგ: 4.5){Colors.ENDC}")
+        self._pause()
 
-        except ValueError:
-            print(f"{Colors.FAIL}❌ გთხოვთ გამოიყენოთ მხოლოდ ციფრები და მძიმე{Colors.ENDC}")
-
-        input("\nგასაგრძელებლად დააჭირეთ Enter-ს...")
-
+    # ==================================================
+    # ADMIN
+    # ==================================================
     def admin_add_book(self):
         clear_screen()
         print(f"{Colors.BOLD}➕ წიგნის დამატება{Colors.ENDC}")
 
-        title = input("📖 სახელი: ").strip()
-        author = input("✍️ ავტორი: ").strip()
-        pages = input("📄 გვერდები: ").strip()
-        rating = input("⭐ რეიტინგი: ").strip()
+        title = self._ask("📖 სახელი: ", lambda x: V.non_empty(x, "სათაური ცარიელია"))
+        author = self._ask("✍️ ავტორი: ", lambda x: V.non_empty(x, "ავტორი ცარიელია"))
+        pages = self._ask("📄 გვერდები: ", lambda x: V.int_in_range(x, 1, 100000, "გვერდების რაოდენობა არასწორია"))
+        rating = self._ask("⭐ რეიტინგი (0–5): ", lambda x: V.float_in_range(x, 0, 5, "რეიტინგი უნდა იყოს 0-დან 5-მდე"))
 
-        try:
-            self.current_user.add_book(
-                self.library,
-                title,
-                author,
-                int(pages),
-                float(rating)
-            )
+        def action():
+            self.current_user.add_book(self.library, title, author, pages, rating)
             print(f"\n{Colors.GREEN}✅ წიგნი წარმატებით დაემატა!{Colors.ENDC}")
-        except ValueError:
-            print(f"{Colors.FAIL}❌ არასწორი მონაცემები{Colors.ENDC}")
 
-        input("\nEnter...")
+        Safe.run(action)
+        self._pause()
 
     def admin_remove_book(self):
-        
         clear_screen()
         print(f"{Colors.BOLD}🗑️ წიგნის წაშლა{Colors.ENDC}")
-        title = input("წიგნის ზუსტი სახელი: ").strip()
-            
-        try:                          
-            self.current_user.remove_book(self.library, title)               
+
+        title = self._ask("წიგნის ზუსტი სახელი: ", lambda x: V.non_empty(x, "სათაური ცარიელია"))
+
+        def action():
+            self.current_user.remove_book(self.library, title)
             print(f"{Colors.GREEN}✅ თუ არსებობდა, წიგნი წაშლილია{Colors.ENDC}")
-            input("\nEnter...")
-                
-            
-        except ValueError as e:
-            print(e)
-            input("\nEnter...")
+
+        Safe.run(action)
+        self._pause()
 
     def admin_list_books(self):
-        while True:
-            clear_screen()
-            print(f"{Colors.BOLD}📚 ბიბლიოთეკის წიგნები{Colors.ENDC}\n")
+        clear_screen()
+        print(f"{Colors.BOLD}📚 ბიბლიოთეკის წიგნები{Colors.ENDC}\n")
 
-            if not self.library.books:
-                print(f"{Colors.WARNING}ბიბლიოთეკა ცარიელია{Colors.ENDC}")
-            else:
-                for i, book in enumerate(self.library.books, start=1):
-                    print(f"{i}. {book.title} | {book.author} | {book.pages} გვ | ⭐ {book.rating}")
+        if not self.library.books:
+            print(f"{Colors.WARNING}ბიბლიოთეკა ცარიელია{Colors.ENDC}")
+        else:
+            for i, book in enumerate(self.library.books, start=1):
+                print(f"{i}. {book.title} | {book.author} | {book.pages} გვ | ⭐ {book.rating}")
 
-            input("\nEnter...")
-            break  
+        self._pause()
 
 
+if __name__ == "__main__":
+    LibraryApp().run()
