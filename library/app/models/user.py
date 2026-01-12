@@ -17,18 +17,22 @@ class User:
 
     def to_dict(self):
         return {
+            "type": "user",
             "name": self.name,
             "phone": self.phone,
             "password": self.password,
             "borrowed_books": self.borrowed_books
         }
+        
+    
+        
 
     @staticmethod
     def from_dict(pid, data):
         return User(
-            pid=pid,
-            name=data["name"],
-            phone=data["phone"],
-            password=data["password"],
-            borrowed_books=data.get("borrowed_books", [])
+            pid,
+            data["name"],
+            data["phone"],
+            data["password"],
+            data.get("borrowed_books", [])
         )
