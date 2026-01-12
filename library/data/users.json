@@ -1,25 +1,4 @@
 {
-    "111": {
-        "type": "user",
-        "name": "ლუბა ბალახაშვილი",
-        "phone": "1234",
-        "password": "ქქქ",
-        "borrowed_books": []
-    },
-    "12345678910": {
-        "type": "user",
-        "name": "ლიზა კენჭოშვილი",
-        "phone": "555444333",
-        "password": "1asd",
-        "borrowed_books": []
-    },
-    "0001": {
-        "type": "admin",
-        "name": "Administrator",
-        "phone": "000",
-        "password": "admin",
-        "borrowed_books": []
-    },
     "11111111111": {
         "type": "admin",
         "name": "Administrator",
@@ -27,25 +6,16 @@
         "password": "admin123",
         "borrowed_books": []
     },
-    "33333333333": {
+    "12345678909": {
         "type": "user",
-        "name": "ფნჯკდს დსჯ",
-        "phone": "222222222",
-        "password": "123nk",
-        "borrowed_books": []
-    },
-    "12341234123": {
-        "type": "user",
-        "name": "",
-        "phone": 0,
-        "password": "",
-        "borrowed_books": []
-    },
-    "12345123456": {
-        "type": "user",
-        "name": "",
-        "phone": 0,
-        "password": "",
-        "borrowed_books": []
+        "name": "Luba Balakhashvili",
+        "phone": "555555555",
+        "password": "qwe123",
+        "borrowed_books": [
+            {
+                "title": "1984",
+                "due_date": "8 დღე"
+            }
+        ]
     }
 }

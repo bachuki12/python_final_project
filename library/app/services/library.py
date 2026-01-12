@@ -5,6 +5,7 @@ from app.models.book import Book
 from app.models.user import User
 from app.models.admin import Admin
 
+
 from app.utils.validators import ValidationError
 from app.utils.safe import SafeExecutor as Safe
 
@@ -154,3 +155,18 @@ class Library:
                 return book.rating
 
         raise ValidationError("წიგნი ვერ მოიძებნა რეიტინგისთვის")
+
+    
+    def remove_user(self, pid):
+        user_todelete = self.users.get(pid)
+        
+        if not user_todelete:
+            return False, 'მომხმარებელი ვერ მოიძებნა'
+
+        if user_todelete.borrowed_books:
+            return False, 'გთხოვთ დააბრუნოთ წიგნები ანგარიშის გაუქმებამდე'
+        
+        del self.users[pid]
+        self.save_users()
+        return True, 'თქვენი ანგარიში წარმატებით გაუქმდა'
+            
