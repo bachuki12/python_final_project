@@ -339,12 +339,11 @@ class LibraryApp:
         self.library.save_users()
         print(f"\n{Colors.BOLD}🎉 სულ დაბრუნდა {len(returned_titles)} წიგნი.{Colors.ENDC}")
 
-        # შეფასება (მხოლოდ ბოლოს, ერთჯერ)
+        # შეფასება
         rating_input = input(f"\n{Colors.BOLD}⭐ შეაფასეთ (0–5, შესაძლებელია ათწილადი) ან გამოტოვეთ: {Colors.ENDC}").strip()
         if rating_input:
             rating_value = Safe.run(lambda: V.float_in_range(rating_input, 0, 5, "რეიტინგი უნდა იყოს 0-დან 5-მდე"))
             if rating_value is not None:
-                # შენს CLI-ში "returned" ბოლო წიგნი იყო; აქ ლოგიკურად ვაფასებთ ბოლოს დაბრუნებულს.
                 title_to_rate = returned_titles[-1]
                 new_avg = self.library.rate_book(title_to_rate, rating_value)
                 if new_avg is not None:
